@@ -1,9 +1,10 @@
-// Launch Radar: a token launch radar for make.fun's token-radar-01 bounty (Node 22, standard
+// Token Radar v2: a token launch radar for make.fun's token-radar-01 bounty (Node 22, standard
 // library only, no network, deterministic: the same snapshot in, the same bytes out, every run).
 //
-// The program reads the sealed snapshot from /input/snapshot.json (or --input <file|dir>), scores
-// every rankable pre-token protocol with the model in lib/model.ts, writes the ranked board to
-// /output/board.json, writes the dashboard's data to /output/data.js, copies this repository's
+// The program reads the sealed snapshot from /input/snapshot.json (or --input <file|dir>), ranks
+// every pre-token launch candidate that passes the screen in lib/model.ts (the protocols set
+// aside as products of tokens that already trade are named in the dashboard's data), writes the ranked board
+// to /output/board.json, writes the dashboard's data to /output/data.js, copies this repository's
 // dashboard/ and screenshots/ to /output, and writes /output/dossier.json with buildDossier from
 // vendor/makefun-board.ts, the summary the judge reads.
 //
@@ -35,7 +36,7 @@ function arg(name: string, fallback: string): string {
 const inputArg = arg('input', '/input');
 const inputFile = inputArg.endsWith('.json') ? inputArg : join(inputArg, 'snapshot.json');
 if (!existsSync(inputFile)) {
-  process.stderr.write(`launch radar: no snapshot at ${inputFile}: pass --input <snapshot.json|directory> or mount the sealed /input\n`);
+  process.stderr.write(`token radar: no snapshot at ${inputFile}: pass --input <snapshot.json|directory> or mount the sealed /input\n`);
   process.exit(2);
 }
 const out = arg('output', process.env.MAKEFUN_OUTPUT_DIR ?? '/output');
@@ -44,7 +45,7 @@ const snapshot = parseSnapshot(readFileSync(inputFile, 'utf8'));
 const { board, radar } = buildRadar(snapshot);
 const issue = boardIssue(board, snapshot);
 if (issue !== null) {
-  process.stderr.write(`launch radar: the model wrote a board the gate refuses: ${issue}\n`);
+  process.stderr.write(`token radar: the model wrote a board the gate refuses: ${issue}\n`);
   process.exit(1);
 }
 
@@ -70,12 +71,12 @@ function copyFiles(from: string, to: string): string[] {
 const page = copyFiles(join(here, 'dashboard'), join(out, 'dashboard'));
 const shots = copyFiles(join(here, 'screenshots'), join(out, 'screenshots'));
 if (shots.length < 3 || shots.length > SCREENSHOT_CAPS.max) {
-  process.stderr.write(`launch radar: screenshots/ holds ${shots.length} image${shots.length === 1 ? '' : 's'}: hand in 3 or 4, the board, a detail view and a filtered view\n`);
+  process.stderr.write(`token radar: screenshots/ holds ${shots.length} image${shots.length === 1 ? '' : 's'}: hand in 3 or 4, the board, a detail view and a filtered view\n`);
   process.exit(1);
 }
 for (const name of shots) {
   if (!IMAGE_NAME.test(name)) {
-    process.stderr.write(`launch radar: screenshots/${name}: a name is letters, digits and . _ -, 1 to 128 characters\n`);
+    process.stderr.write(`token radar: screenshots/${name}: a name is letters, digits and . _ -, 1 to 128 characters\n`);
     process.exit(1);
   }
 }
@@ -84,6 +85,6 @@ for (const name of shots) {
 writeFileSync(join(out, 'dossier.json'), buildDossier(out, { text_max_bytes: TEXT_MAX_BYTES, screenshots: SCREENSHOT_CAPS, dashboard: DASHBOARD_CAPS }));
 
 process.stdout.write(
-  `launch radar: ${snapshot.protocols.length} protocols scanned, ${radar.pre_token} record no token, ${board.length} ranked (${radar.watchlist_size} watchlist, ${radar.early_size} early), ${radar.live_size} live set aside as comps\n` +
-    `launch radar: wrote ${join(out, 'board.json')}, ${join(out, 'data.js')}, ${join(out, 'dashboard')} (${page.length} files), ${join(out, 'screenshots')} (${shots.length} images) and ${join(out, 'dossier.json')}\n`,
+  `token radar: ${snapshot.protocols.length} protocols scanned, ${radar.pre_token} record no token, ${board.length} ranked as launch candidates (${radar.watchlist_size} watchlist, ${radar.early_size} beyond it), ${radar.set_aside_size} set aside as products of tokens that already trade, ${radar.live_total} already trading shown as comps\n` +
+    `token radar: wrote ${join(out, 'board.json')}, ${join(out, 'data.js')}, ${join(out, 'dashboard')} (${page.length} files), ${join(out, 'screenshots')} (${shots.length} images) and ${join(out, 'dossier.json')}\n`,
 );
